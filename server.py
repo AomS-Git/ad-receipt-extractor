@@ -24,6 +24,10 @@ def _is_authed(request: Request) -> bool:
         return True
     return request.cookies.get("auth_token", "") in SESSIONS
 
+@app.get("/api/health")
+async def health():
+    return {"ok": True}
+
 @app.post("/api/login")
 async def login(request: Request):
     body = await request.json()
