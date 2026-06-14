@@ -3,6 +3,11 @@ import subprocess
 import tempfile
 import os
 from pathlib import Path
+try:
+    import pdfplumber
+    HAS_PDFPLUMBER = True
+except ImportError:
+    HAS_PDFPLUMBER = False
 
 THAI_MONTHS = {
     'ม.ค.': 1, 'มกราคม': 1,
@@ -34,12 +39,33 @@ def convert_thai_date(raw: str) -> str:
     return f"{int(day):02d}/{month_num:02d}/{year}"
 
 
+def extract_text_pdfplumber(pdf_path: str) -> str:
+    """ใช้ pdfplumber (Unicode-safe) แยกหน้าด้วย \f"""
+    pages = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            pages.append(page.extract_text() or '')
+    return '\f'.join(pages)
+
+
 def extract_text_pdftotext(pdf_path: str) -> str:
     result = subprocess.run(
         ["pdftotext", "-layout", "-enc", "UTF-8", pdf_path, "-"],
         capture_output=True, text=True, encoding="utf-8", errors="replace"
     )
     return result.stdout
+
+
+def extract_text(pdf_path: str) -> str:
+    """ใช้ pdfplumber ก่อน ถ้าไม่มีค่อย fallback pdftotext"""
+    if HAS_PDFPLUMBER:
+        try:
+            text = extract_text_pdfplumber(pdf_path)
+            if text.strip():
+                return text
+        except Exception:
+            pass
+    return extract_text_pdftotext(pdf_path)
 
 
 def is_garbled(page_text: str) -> bool:
@@ -117,7 +143,7 @@ def parse_page(page_text: str) -> dict | None:
 
 def parse_facebook_pdf(pdf_path: str) -> list[dict]:
     """Parse PDF ใบเสร็จ FB — รองรับหลายหน้า / หลายใบเสร็จใน 1 ไฟล์"""
-    text = extract_text_pdftotext(pdf_path)
+    text = extract_text(pdf_path)
     pages = text.split('\f')
 
     results = []
