@@ -5,8 +5,8 @@ from pathlib import Path
 
 def extract_text_pdftotext(pdf_path: str) -> str:
     result = subprocess.run(
-        ["pdftotext", "-layout", pdf_path, "-"],
-        capture_output=True, text=True
+        ["pdftotext", "-layout", "-enc", "UTF-8", pdf_path, "-"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace"
     )
     return result.stdout
 

@@ -36,8 +36,8 @@ def convert_thai_date(raw: str) -> str:
 
 def extract_text_pdftotext(pdf_path: str) -> str:
     result = subprocess.run(
-        ["pdftotext", "-layout", pdf_path, "-"],
-        capture_output=True, text=True
+        ["pdftotext", "-layout", "-enc", "UTF-8", pdf_path, "-"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace"
     )
     return result.stdout
 
@@ -96,9 +96,13 @@ def parse_page(page_text: str) -> dict | None:
     else:
         row['ยอดเงิน (บาท)'] = 0.0
 
-    # หมายเลขใบเสร็จ
+    # หมายเลขใบเสร็จ (FBADS-xxx หรือ ID ธุรกรรมแทน สำหรับใบ top-up)
     m = re.search(r'(FBADS-[\d]+-[\d]+)', page_text)
-    row['หมายเลขใบเสร็จ'] = m.group(1).strip() if m else ''
+    if m:
+        row['หมายเลขใบเสร็จ'] = m.group(1).strip()
+    else:
+        # ใบ top-up ไม่มี FBADS — ใช้ ID ธุรกรรมแทน
+        row['หมายเลขใบเสร็จ'] = row.get('ID ธุรกรรม', '')
 
     # โพสต์/แคมเปญ — บรรทัดที่มี "โพสต์:" หรือ "โพสต:" แต่ไม่มี "อิมเพรสชัน"
     posts = re.findall(r'โพสต[์:]?\s*[":]\s*"?(.+?)"?\s*(?:\n|$)', page_text)
