@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ad Receipt Extractor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0d14;--surface:#111520;--surface2:#181d2e;
+  --border:#1e2540;--border2:#252d47;
+  --accent:#3b6ef8;--accent2:#5b8bff;
+  --fb:#1877f2;--tt:#fe2c55;
+  --ok:#22c55e;--warn:#f59e0b;--err:#ef4444;
+  --text:#e8eaf6;--text2:#8892b0;--text3:#4a5578;
+  --font:'Sarabun',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(59,110,248,.04) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(59,110,248,.04) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0;}
+
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+.login-box{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:40px 36px;
+  width:100%;max-width:380px;position:relative;z-index:1;
+  box-shadow:0 24px 80px rgba(0,0,0,.5),0 0 60px rgba(59,110,248,.08);animation:fadeUp .4s ease;}
+.login-logo{width:52px;height:52px;border-radius:14px;margin:0 auto 20px;
+  background:linear-gradient(135deg,var(--fb),var(--accent));display:flex;align-items:center;
+  justify-content:center;font-size:26px;box-shadow:0 0 30px rgba(59,110,248,.4);}
+.login-box h2{font-size:20px;font-weight:700;text-align:center;margin-bottom:4px;}
+.login-box p{font-size:13px;color:var(--text2);text-align:center;margin-bottom:28px;}
+.field-label{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;display:block;letter-spacing:.05em;}
+.field-wrap{position:relative;margin-bottom:16px;}
+.field-wrap input{width:100%;padding:12px 44px 12px 14px;background:var(--surface2);
+  border:1px solid var(--border2);border-radius:10px;color:var(--text);
+  font-family:var(--mono);font-size:15px;outline:none;transition:border .2s;letter-spacing:.05em;}
+.field-wrap input:focus{border-color:var(--accent);}
+.eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:4px;transition:color .2s;}
+.eye-btn:hover{color:var(--text2);}
+.btn-login{width:100%;padding:13px;border-radius:10px;border:none;background:var(--accent);
+  color:#fff;font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;
+  box-shadow:0 4px 20px rgba(59,110,248,.4);transition:all .2s;margin-top:4px;}
+.btn-login:hover{background:var(--accent2);transform:translateY(-1px);}
+.btn-login:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.login-err{font-size:13px;color:var(--err);text-align:center;margin-top:12px;min-height:20px;}
+
+/* APP */
+#app{display:none;position:relative;z-index:1;}
+.wrap{max-width:980px;margin:0 auto;padding:0 24px;}
+
+header{padding:24px 0 18px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);}
+.logo{width:40px;height:40px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--fb),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  box-shadow:0 0 20px rgba(59,110,248,.3);}
+.header-text h1{font-size:18px;font-weight:700;}
+.header-text p{font-size:12px;color:var(--text2);margin-top:2px;}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.user-badge{font-size:12px;color:var(--text2);background:var(--surface2);
+  border:1px solid var(--border);padding:5px 12px;border-radius:20px;}
+.btn-logout{font-size:12px;color:var(--text3);background:none;border:1px solid var(--border);
+  padding:5px 12px;border-radius:20px;cursor:pointer;font-family:var(--font);transition:all .2s;}
+.btn-logout:hover{border-color:var(--err);color:var(--err);}
+
+/* TABS */
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:4px;width:fit-content;margin:24px 0 0;}
+.tab-btn{padding:9px 22px;border-radius:9px;border:none;cursor:pointer;
+  font-family:var(--font);font-size:14px;font-weight:500;transition:all .2s;
+  background:transparent;color:var(--text3);}
+.tab-btn.active{background:var(--accent);color:#fff;box-shadow:0 2px 10px rgba(59,110,248,.3);}
+.tab-btn:not(.active):hover{color:var(--text2);}
+.tab-panel{display:none;padding:24px 0;}
+.tab-panel.active{display:block;}
+
+/* GRID */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+@media(max-width:640px){.grid{grid-template-columns:1fr;}}
+.full{grid-column:1/-1;}
+
+/* DROPZONE */
+.dropzone{border:2px dashed var(--border2);border-radius:14px;padding:40px 28px;
+  text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);}
+.dropzone:hover,.dropzone.dragover{border-color:var(--accent);background:rgba(59,110,248,.05);}
+.drop-icon{width:50px;height:50px;margin:0 auto 12px;border-radius:12px;
+  background:rgba(59,110,248,.1);display:flex;align-items:center;justify-content:center;font-size:22px;}
+.drop-title{font-size:15px;font-weight:600;margin-bottom:5px;}
+.drop-sub{font-size:13px;color:var(--text2);}
+.drop-sub span{color:var(--accent2);}
+.dz-merge .drop-icon{background:rgba(5,150,105,.1);}
+.dz-merge:hover,.dz-merge.dragover{border-color:var(--ok);}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;}
+.card-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:14px;}
+
+/* FILE LIST */
+.file-list{display:flex;flex-direction:column;gap:7px;}
+.file-item{display:flex;align-items:center;gap:10px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;}
+.file-name{flex:1;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.badge{font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:6px;flex-shrink:0;}
+.st-pending{background:rgba(139,146,176,.1);color:var(--text3);}
+.st-ok{background:rgba(34,197,94,.12);color:var(--ok);}
+.st-warn{background:rgba(245,158,11,.12);color:var(--warn);}
+.st-error{background:rgba(239,68,68,.12);color:var(--err);}
+.pl-fb{background:rgba(24,119,242,.15);color:#60a5fa;}
+.pl-tt{background:rgba(254,44,85,.15);color:#fb7185;}
+.pl-xl{background:rgba(5,150,105,.15);color:#34d399;}
+
+/* PROGRESS */
+.prog-wrap{margin-top:10px;display:none;}
+.prog-wrap.show{display:block;}
+.prog-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:5px;}
+.prog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--fb),var(--accent2));
+  border-radius:2px;transition:width .3s;}
+.prog-fill.green{background:linear-gradient(90deg,#059669,#34d399);}
+.prog-label{font-size:12px;color:var(--text2);font-family:var(--mono);}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.stat{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+.stat-n{font-size:26px;font-weight:700;font-family:var(--mono);}
+.stat-l{font-size:11px;color:var(--text2);margin-top:3px;}
+.c-blue{color:var(--accent2);} .c-ok{color:var(--ok);} .c-err{color:var(--err);} .c-grn{color:#34d399;}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{border-bottom:1px solid var(--border2);}
+th{padding:9px 13px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text3);white-space:nowrap;}
+td{padding:9px 13px;border-bottom:1px solid var(--border);color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(59,110,248,.04);}
+.td-amt{font-family:var(--mono);color:var(--text);font-weight:600;}
+.td-rcpt{font-family:var(--mono);font-size:12px;color:var(--accent2);}
+.td-pg{max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.td-date{font-family:var(--mono);font-size:12px;}
+
+/* MERGE TABLE */
+.merge-tbl td{padding:10px 14px;}
+.day-row-total td{background:rgba(5,150,105,.08)!important;font-weight:600;color:var(--ok);}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;
+  border-radius:10px;border:none;font-family:var(--font);font-size:14px;
+  font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-prim{background:var(--accent);color:#fff;box-shadow:0 4px 16px rgba(59,110,248,.3);}
+.btn-prim:hover{background:var(--accent2);transform:translateY(-1px);}
+.btn-prim:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.btn-grn{background:rgba(34,197,94,.15);color:var(--ok);border:1px solid rgba(34,197,94,.3);}
+.btn-grn:hover{background:rgba(34,197,94,.25);}
+.btn-teal{background:rgba(5,150,105,.15);color:#34d399;border:1px solid rgba(5,150,105,.3);}
+.btn-teal:hover{background:rgba(5,150,105,.25);}
+.btn-out{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+.btn-out:hover{border-color:var(--accent);color:var(--accent2);}
+.row-btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+
+/* SECTION HEAD */
+.sec-head{display:flex;align-items:center;gap:10px;padding-bottom:4px;
+  border-bottom:1px solid var(--border);margin-bottom:18px;}
+.sec-head h2{font-size:14px;font-weight:600;}
+.sec-head .cnt{font-size:11px;font-family:var(--mono);
+  background:rgba(59,110,248,.12);color:var(--accent2);padding:2px 8px;border-radius:10px;}
+.sec-head .cnt-grn{background:rgba(5,150,105,.12);color:#34d399;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);
+  border:1px solid var(--border2);border-radius:10px;padding:13px 16px;
+  font-size:13px;max-width:300px;transform:translateY(80px);opacity:0;
+  transition:all .3s;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-color:rgba(34,197,94,.3);} .toast.err{border-color:rgba(239,68,68,.3);}
+
+/* MERGE SUMMARY BOX */
+.merge-info{background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);
+  border-radius:12px;padding:16px 20px;margin-bottom:16px;}
+.merge-info-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
+.merge-info-row span:first-child{color:var(--text2);}
+.merge-info-row span:last-child{color:var(--ok);font-weight:600;font-family:var(--mono);}
+
+@keyframes spin{to{transform:rotate(360deg);}}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.2);
+  border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.fade-up{animation:fadeUp .35s ease both;}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">📊</div>
+    <h2>Ad Receipt Extractor</h2>
+    <p>กรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
+    <label class="field-label">รหัสผ่าน</label>
+    <div class="field-wrap">
+      <input type="password" id="pwInput" placeholder="••••••••"
+             onkeydown="if(event.key==='Enter') doLogin()">
+      <button class="eye-btn" onclick="toggleEye()" id="eyeBtn">👁️</button>
+    </div>
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+<div class="wrap">
+
+  <header>
+    <div class="logo">📊</div>
+    <div class="header-text">
+      <h1>Ad Receipt Extractor</h1>
+      <p>แปลงใบเสร็จค่าโฆษณา Facebook &amp; TikTok → Excel</p>
+    </div>
+    <div class="header-right">
+      <span class="user-badge">🔒 เข้าสู่ระบบแล้ว</span>
+      <button class="btn-logout" onclick="doLogout()">ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('convert', this)">📄 แปลง PDF → Excel</button>
+    <button class="tab-btn" onclick="switchTab('merge', this)">🔀 รวม Excel หลายเพจ</button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- TAB 1: CONVERT PDF                                  -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-convert">
+    <div class="grid">
+
+      <div class="dropzone full" id="dz1" onclick="document.getElementById('fi1').click()">
+        <div class="drop-icon">📂</div>
+        <div class="drop-title">วาง PDF ที่นี่ หรือคลิกเลือกไฟล์</div>
+        <div class="drop-sub">รองรับ <span>Facebook</span> และ <span>TikTok</span> · โยนหลายไฟล์พร้อมกันได้</div>
+        <input type="file" id="fi1" multiple accept=".pdf">
+      </div>
+
+      <div class="card full hidden" id="cvFileCard">
+        <div class="card-title">ไฟล์ที่เลือก</div>
+        <div class="file-list" id="cvFileList"></div>
+        <div class="prog-wrap" id="cvProg">
+          <div class="prog-label" id="cvProgLabel">กำลังประมวลผล...</div>
+          <div class="prog-bar"><div class="prog-fill" id="cvProgFill"></div></div>
+        </div>
+      </div>
+
+      <div class="row-btns full hidden" id="cvActions">
+        <button class="btn btn-prim" id="cvBtn" onclick="processConvert()">⚡ ประมวลผล</button>
+        <button class="btn btn-out" onclick="resetConvert()">🗑️ ล้างทั้งหมด</button>
+      </div>
+
+      <!-- result -->
+      <div class="full hidden" id="cvResult">
+        <div class="sec-head fade-up">
+          <h2>📋 ผลลัพธ์</h2>
+          <span class="cnt" id="cvCnt">0 ใบ</span>
+        </div>
+        <div class="card full fade-up" style="margin-bottom:16px;">
+          <div class="stats">
+            <div class="stat"><div class="stat-n c-blue" id="cvSTotal">0</div><div class="stat-l">ใบทั้งหมด</div></div>
+            <div class="stat"><div class="stat-n c-ok" id="cvSOk">0</div><div class="stat-l">สำเร็จ</div></div>
+            <div class="stat"><div class="stat-n c-err" id="cvSErr">0</div><div class="stat-l">ต้องตรวจสอบ</div></div>
+          </div>
+        </div>
+        <div class="card tbl-wrap fade-up" style="margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:10px;">รายการใบเสร็จ</div>
+          <table>
+            <thead><tr>
+              <th>แพลตฟอร์ม</th><th>วันที่</th><th>หมายเลขใบเสร็จ</th>
+              <th>ยอดเงิน</th><th>ชื่อเพจ</th><th>สถานะ</th>
+            </tr></thead>
+            <tbody id="cvTableBody"></tbody>
+          </table>
+        </div>
+        <div class="row-btns fade-up">
+          <button class="btn btn-grn" id="cvDownload">⬇️ Download Excel รายเพจ</button>
+          <button class="btn btn-out" onclick="resetConvert()">🔄 อัปโหลดใหม่</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- TAB 2: MERGE EXCEL                                  -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-merge">
+    <div class="grid">
+
+      <!-- คำอธิบาย -->
+      <div class="card full" style="background:rgba(59,110,248,.05);border-color:rgba(59,110,248,.2);margin-bottom:4px;">
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          <strong style="color:var(--text);">วิธีใช้:</strong>
+          อัปโหลด Excel ที่แปลงมาแล้วจากหลายเพจ ระบบจะรวมเป็นไฟล์เดียว พร้อม<br>
+          📋 <strong style="color:var(--text);">Sheet รายบิลทั้งหมด</strong> — เรียงตามวันที่, มีคอลัมน์ชื่อเพจ, กรองได้<br>
+          📅 <strong style="color:var(--text);">Sheet ยอดรวมรายวัน</strong> — รวมทุกเพจเป็นยอดเดียวต่อวัน<br>
+          ✅ ระบบ <strong style="color:var(--text);">ตัดบิลซ้ำ</strong> อัตโนมัติ (เลขใบเสร็จเดียวกัน)
+        </div>
+      </div>
+
+      <div class="dropzone dz-merge full" id="dz2" onclick="document.getElementById('fi2').click()">
+        <div class="drop-icon">📊</div>
+        <div class="drop-title">วาง Excel ที่นี่ หรือคลิกเลือกไฟล์</div>
+        <div class="drop-sub">รองรับไฟล์ <span style="color:#34d399;">.xlsx</span> จากระบบนี้ · โยนหลายไฟล์พร้อมกัน</div>
+        <input type="file" id="fi2" multiple accept=".xlsx">
+      </div>
+
+      <div class="card full hidden" id="mgFileCard">
+        <div class="card-title">ไฟล์ Excel ที่เลือก</div>
+        <div class="file-list" id="mgFileList"></div>
+        <div class="prog-wrap" id="mgProg">
+          <div class="prog-label" id="mgProgLabel">กำลังรวมไฟล์...</div>
+          <div class="prog-bar"><div class="prog-fill green" id="mgProgFill"></div></div>
+        </div>
+      </div>
+
+      <div class="row-btns full hidden" id="mgActions">
+        <button class="btn btn-prim" id="mgBtn" onclick="processMerge()"
+          style="background:#059669;box-shadow:0 4px 16px rgba(5,150,105,.3);">
+          🔀 รวมไฟล์
+        </button>
+        <button class="btn btn-out" onclick="resetMerge()">🗑️ ล้างทั้งหมด</button>
+      </div>
+
+      <!-- merge result -->
+      <div class="full hidden" id="mgResult">
+        <div class="sec-head fade-up">
+          <h2>✅ ผลลัพธ์การรวม</h2>
+          <span class="cnt cnt-grn" id="mgCnt">0 ใบ</span>
+        </div>
+
+        <div class="merge-info fade-up" id="mgInfoBox"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="fade-up">
+          <!-- รายบิล preview -->
+          <div class="card tbl-wrap">
+            <div class="card-title" style="margin-bottom:10px;">📋 ตัวอย่างรายบิล (10 แรก)</div>
+            <table>
+              <thead><tr>
+                <th>วันที่</th><th>ยอด (฿)</th><th>ชื่อเพจ</th>
+              </tr></thead>
+              <tbody id="mgBillBody"></tbody>
+            </table>
+          </div>
+          <!-- รายวัน preview -->
+          <div class="card tbl-wrap">
+            <div class="card-title" style="margin-bottom:10px;">📅 ยอดรวมรายวัน</div>
+            <table class="merge-tbl">
+              <thead><tr>
+                <th>วันที่</th><th>จำนวนใบ</th><th>ยอดรวม (฿)</th>
+              </tr></thead>
+              <tbody id="mgDailyBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="row-btns fade-up" style="margin-top:16px;">
+          <button class="btn btn-teal" id="mgDownload">⬇️ Download Excel รวมทุกเพจ</button>
+          <button class="btn btn-out" onclick="resetMerge()">🔄 อัปโหลดใหม่</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- .wrap -->
+</div><!-- #app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── AUTH ──────────────────────────────────────────────────────
+async function checkAuth(){
+  const r=await fetch('/api/auth-check'), d=await r.json();
+  if(d.authed||!d.has_password) showApp();
+}
+async function doLogin(){
+  const pw=document.getElementById('pwInput').value; if(!pw) return;
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true; btn.textContent='กำลังตรวจสอบ...';
+  document.getElementById('loginErr').textContent='';
+  try{
+    const r=await fetch('/api/login',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const d=await r.json();
+    if(d.ok){ showApp(); }
+    else{ document.getElementById('loginErr').textContent='❌ '+(d.error||'รหัสผ่านไม่ถูกต้อง');
+      document.getElementById('pwInput').value=''; document.getElementById('pwInput').focus(); }
+  }catch(e){ document.getElementById('loginErr').textContent='❌ ไม่สามารถเชื่อมต่อได้'; }
+  btn.disabled=false; btn.textContent='เข้าสู่ระบบ';
+}
+async function doLogout(){
+  await fetch('/api/logout',{method:'POST'});
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('pwInput').value='';
+  resetConvert(); resetMerge();
+}
+function showApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+function toggleEye(){
+  const i=document.getElementById('pwInput'),b=document.getElementById('eyeBtn');
+  if(i.type==='password'){i.type='text';b.textContent='🙈';}else{i.type='password';b.textContent='👁️';}
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+function switchTab(name, btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── SHARED FILE UTILS ─────────────────────────────────────────
+function setupDrop(dzId, inputId, onFiles){
+  const dz=document.getElementById(dzId);
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');onFiles([...e.dataTransfer.files]);});
+  document.getElementById(inputId).addEventListener('change',e=>{onFiles([...e.target.files]);e.target.value='';});
+}
+function fmtAmt(v){
+  if(typeof v!=='number') return v||'—';
+  return '฿'+v.toLocaleString('th-TH',{minimumFractionDigits:2});
+}
+function showToast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+function animProg(fillId, labelId, label){
+  let p=0;
+  const fill=document.getElementById(fillId), lbl=document.getElementById(labelId);
+  const t=setInterval(()=>{p=Math.min(p+Math.random()*8,85);fill.style.width=p+'%';lbl.textContent=label;},200);
+  return {done:()=>{clearInterval(t);fill.style.width='100%';},clear:()=>clearInterval(t)};
+}
+
+// ── TAB 1: CONVERT ────────────────────────────────────────────
+let cvFiles=[], cvSession=null;
+setupDrop('dz1','fi1', files=>{
+  files.filter(f=>f.name.toLowerCase().endsWith('.pdf')).forEach(f=>{
+    if(!cvFiles.find(x=>x.name===f.name&&x.size===f.size)) cvFiles.push(f);
+  });
+  renderCvFiles();
+});
+
+function renderCvFiles(){
+  const card=document.getElementById('cvFileCard');
+  const list=document.getElementById('cvFileList');
+  const act=document.getElementById('cvActions');
+  if(!cvFiles.length){card.classList.add('hidden');act.classList.add('hidden');return;}
+  card.classList.remove('hidden'); act.classList.remove('hidden');
+  list.innerHTML=cvFiles.map((f,i)=>`
+    <div class="file-item">
+      <span>📄</span>
+      <span class="file-name" title="${f.name}">${f.name}</span>
+      <span class="badge pl-fb hidden" id="cvp-${i}">FB</span>
+      <span class="badge st-pending" id="cvs-${i}">รอ</span>
+    </div>`).join('');
+}
+
+async function processConvert(){
+  if(!cvFiles.length) return;
+  const btn=document.getElementById('cvBtn');
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div><span>กำลังประมวลผล...</span>';
+  document.getElementById('cvProg').classList.add('show');
+  const prog=animProg('cvProgFill','cvProgLabel',`กำลังประมวลผล ${cvFiles.length} ไฟล์...`);
+  try{
+    const form=new FormData();
+    cvFiles.forEach(f=>form.append('files',f));
+    const res=await fetch('/api/process',{method:'POST',body:form});
+    if(res.status===401){doLogout();return;}
+    const data=await res.json();
+    prog.done();
+    cvSession=data.session_id;
+    data.files.forEach((fd,i)=>{
+      const fs=document.getElementById(`cvs-${i}`), fp=document.getElementById(`cvp-${i}`);
+      if(fs){
+        if(fd.status==='ok'){fs.className='badge st-ok';fs.textContent=`✓ ${fd.ok}ใบ`;}
+        if(fd.status==='warn'){fs.className='badge st-warn';fs.textContent=`⚠ ${fd.ok}ใบ`;}
+        if(fd.status==='error'){fs.className='badge st-error';fs.textContent='ผิดพลาด';}
+      }
+      if(fp){
+        fp.classList.remove('hidden');
+        if(fd.platform==='facebook'){fp.className='badge pl-fb';fp.textContent='FB';}
+        else if(fd.platform==='tiktok'){fp.className='badge pl-tt';fp.textContent='TT';}
+      }
+    });
+    renderCvResult(data);
+    showToast(`✅ ประมวลผลสำเร็จ ${data.total_ok} ใบ`,'ok');
+  }catch(e){prog.clear();showToast('❌ '+e.message,'err');btn.disabled=false;btn.innerHTML='<span>⚡ ประมวลผล</span>';}
+}
+
+function renderCvResult(data){
+  document.getElementById('cvResult').classList.remove('hidden');
+  document.getElementById('cvSTotal').textContent=data.total_ok+data.total_err;
+  document.getElementById('cvSOk').textContent=data.total_ok;
+  document.getElementById('cvSErr').textContent=data.total_err;
+  document.getElementById('cvCnt').textContent=`${data.total_ok} ใบ`;
+  const body=document.getElementById('cvTableBody');
+  if(!data.rows?.length){
+    body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px;">ไม่พบข้อมูล</td></tr>';
+  } else {
+    body.innerHTML=data.rows.map(r=>{
+      const pc=r['แพลตฟอร์ม']==='Facebook'?'pl-fb':'pl-tt';
+      const pl=r['แพลตฟอร์ม']==='Facebook'?'FB':'TT';
+      const sb=r['สถานะ']==='OK'?'<span class="badge st-ok">OK</span>':'<span class="badge st-warn">ตรวจสอบ</span>';
+      return `<tr>
+        <td><span class="badge ${pc}">${pl}</span></td>
+        <td class="td-date">${r['วันที่']||'—'}</td>
+        <td class="td-rcpt">${r['หมายเลขใบเสร็จ']||'—'}</td>
+        <td class="td-amt">${fmtAmt(r['ยอดเงิน (บาท)'])}</td>
+        <td class="td-pg">${r['ชื่อเพจ']||'—'}</td>
+        <td>${sb}</td></tr>`;
+    }).join('');
+  }
+  document.getElementById('cvDownload').onclick=()=>{
+    if(cvSession) window.location.href=`/api/download/${cvSession}`;
+  };
+  document.getElementById('cvResult').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function resetConvert(){
+  cvFiles=[]; cvSession=null; renderCvFiles();
+  document.getElementById('cvResult').classList.add('hidden');
+  document.getElementById('cvProg').classList.remove('show');
+  document.getElementById('cvProgFill').style.width='0%';
+  document.getElementById('cvBtn').disabled=false;
+  document.getElementById('cvBtn').innerHTML='<span>⚡ ประมวลผล</span>';
+}
+
+// ── TAB 2: MERGE ──────────────────────────────────────────────
+let mgFiles=[], mgSession=null;
+setupDrop('dz2','fi2', files=>{
+  files.filter(f=>f.name.toLowerCase().endsWith('.xlsx')).forEach(f=>{
+    if(!mgFiles.find(x=>x.name===f.name&&x.size===f.size)) mgFiles.push(f);
+  });
+  renderMgFiles();
+});
+
+function renderMgFiles(){
+  const card=document.getElementById('mgFileCard');
+  const list=document.getElementById('mgFileList');
+  const act=document.getElementById('mgActions');
+  if(!mgFiles.length){card.classList.add('hidden');act.classList.add('hidden');return;}
+  card.classList.remove('hidden'); act.classList.remove('hidden');
+  list.innerHTML=mgFiles.map((f,i)=>`
+    <div class="file-item">
+      <span>📊</span>
+      <span class="file-name" title="${f.name}">${f.name}</span>
+      <span class="badge pl-xl" id="mgs-${i}">Excel</span>
+    </div>`).join('');
+}
+
+async function processMerge(){
+  if(!mgFiles.length) return;
+  const btn=document.getElementById('mgBtn');
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div><span>กำลังรวมไฟล์...</span>';
+  document.getElementById('mgProg').classList.add('show');
+  const prog=animProg('mgProgFill','mgProgLabel',`กำลังรวม ${mgFiles.length} ไฟล์...`);
+  try{
+    const form=new FormData();
+    mgFiles.forEach(f=>form.append('files',f));
+    const res=await fetch('/api/merge',{method:'POST',body:form});
+    if(res.status===401){doLogout();return;}
+    const data=await res.json();
+    prog.done();
+    mgSession=data.session_id;
+    // อ่านข้อมูลจาก Excel ที่รวมแล้วมา preview
+    const previewRes=await fetch(`/api/merge-preview/${data.session_id}`);
+    const preview=previewRes.ok ? await previewRes.json() : null;
+    renderMgResult(data, preview);
+    showToast(`✅ รวมสำเร็จ ${data.total_rows} ใบ จาก ${data.total_files} ไฟล์`,'ok');
+  }catch(e){prog.clear();showToast('❌ '+e.message,'err');
+    btn.disabled=false;btn.innerHTML='<span>🔀 รวมไฟล์</span>';}
+}
+
+function renderMgResult(data, preview){
+  document.getElementById('mgResult').classList.remove('hidden');
+  document.getElementById('mgCnt').textContent=`${data.total_rows} ใบ`;
+
+  // info box
+  const info=data.files.map(f=>`
+    <div class="merge-info-row">
+      <span>📊 ${f.filename}</span>
+      <span>${f.rows} ใบ ${f.status==='ok'?'✅':'⚠️'}</span>
+    </div>`).join('');
+  document.getElementById('mgInfoBox').innerHTML=`
+    <div style="font-size:12px;font-weight:600;color:#34d399;margin-bottom:8px;">ไฟล์ที่รวม</div>
+    ${info}
+    <div class="merge-info-row" style="margin-top:8px;border-top:1px solid rgba(5,150,105,.2);padding-top:8px;">
+      <span><strong>รวมทั้งหมด</strong></span>
+      <span>${data.total_rows} ใบ จาก ${data.total_files} ไฟล์</span>
+    </div>`;
+
+  // bill preview
+  const billBody=document.getElementById('mgBillBody');
+  if(preview?.bills?.length){
+    billBody.innerHTML=preview.bills.slice(0,10).map(r=>`<tr>
+      <td class="td-date">${r.date||'—'}</td>
+      <td class="td-amt">${fmtAmt(r.amount)}</td>
+      <td class="td-pg">${r.page||'—'}</td>
+    </tr>`).join('');
+  } else {
+    billBody.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--text3);">—</td></tr>';
+  }
+
+  // daily preview
+  const dailyBody=document.getElementById('mgDailyBody');
+  if(preview?.daily?.length){
+    const rows=preview.daily;
+    dailyBody.innerHTML=rows.map((r,i)=>`<tr class="${i===rows.length-1?'day-row-total':''}">
+      <td class="td-date">${r.date||'รวม'}</td>
+      <td style="text-align:center;">${r.count}</td>
+      <td class="td-amt">${fmtAmt(r.total)}</td>
+    </tr>`).join('');
+  } else {
+    dailyBody.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--text3);">—</td></tr>';
+  }
+
+  document.getElementById('mgDownload').onclick=()=>{
+    if(mgSession) window.location.href=`/api/download-merge/${mgSession}`;
+  };
+  document.getElementById('mgResult').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function resetMerge(){
+  mgFiles=[]; mgSession=null; renderMgFiles();
+  document.getElementById('mgResult').classList.add('hidden');
+  document.getElementById('mgProg').classList.remove('show');
+  document.getElementById('mgProgFill').style.width='0%';
+  document.getElementById('mgBtn').disabled=false;
+  document.getElementById('mgBtn').innerHTML='<span>🔀 รวมไฟล์</span>';
+}
+
+checkAuth();
+</script>
+</body>
+</html>
